@@ -19,7 +19,6 @@
     <title>Advanced IPTV Player</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* Same styles as before */
         body, html {
             margin: 0;
             padding: 0;
@@ -28,6 +27,7 @@
             overflow-x: hidden;
         }
 
+        /* Loader */
         .loader {
             position: fixed;
             top: 0;
@@ -261,10 +261,9 @@
             gridContainer.appendChild(gridItem);
         }
 
-        // Update progress bar
-        progressBar.style.width = ((endIndex / total) * 100) + "%";
-
+        updateProgressBar(total, endIndex);
         page++;
+
         if (endIndex < total) {
             loadMoreButton();
         } else {
@@ -272,7 +271,12 @@
         }
     }
 
-    // Load More Channels Button
+    // Update Progress Bar
+    function updateProgressBar(total, loaded) {
+        progressBar.style.width = (loaded / total) * 100 + "%";
+    }
+
+    // Load More Button
     function loadMoreButton() {
         const loadMoreBtn = document.createElement("button");
         loadMoreBtn.textContent = "Load More Channels";
@@ -328,7 +332,6 @@
     function hideLoader() {
         loader.style.display = "none";
     }
-
 </script>
 
 </body>
