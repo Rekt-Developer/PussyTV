@@ -3,9 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced IPTV Player for watching live TV channels with dynamic, paginated UI.">
+    <meta property="og:title" content="Advanced IPTV Player">
+    <meta property="og:description" content="Watch live IPTV channels with a dynamic player, loading content efficiently in a user-friendly interface.">
+    <meta property="og:image" content="https://example.com/path/to/preview-image.jpg">
+    <meta property="og:url" content="https://example.com/your-page">
+    <meta property="og:site_name" content="Advanced IPTV Player">
+    
+    <!-- Twitter Metadata -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="Advanced IPTV Player">
+    <meta property="twitter:description" content="Watch live IPTV channels with a dynamic player, loading content efficiently in a user-friendly interface.">
+    <meta property="twitter:image" content="https://example.com/path/to/preview-image.jpg">
+
     <title>Advanced IPTV Player</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        /* Same styles as before */
         body, html {
             margin: 0;
             padding: 0;
@@ -14,7 +28,6 @@
             overflow-x: hidden;
         }
 
-        /* Page Loader Styles */
         .loader {
             position: fixed;
             top: 0;
@@ -42,7 +55,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Progress Bar Styles */
         .progress-bar {
             position: fixed;
             top: 0;
@@ -54,7 +66,6 @@
             z-index: 999;
         }
 
-        /* Header Styling */
         header {
             background-color: #333;
             color: #fff;
@@ -66,7 +77,6 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
-        /* Grid Container */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -100,7 +110,6 @@
             transform: scale(1.1);
         }
 
-        /* Video Player Styles */
         .video-container {
             display: none;
             width: 80%;
@@ -118,7 +127,6 @@
             border-radius: 10px;
         }
 
-        /* Error Message */
         .error-message {
             display: none;
             background-color: #f8d7da;
@@ -151,7 +159,6 @@
             word-wrap: break-word;
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .grid-container {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -257,21 +264,24 @@
         // Update progress bar
         progressBar.style.width = ((endIndex / total) * 100) + "%";
 
-        // Show Load More button if there are more channels
+        page++;
         if (endIndex < total) {
-            const loadMoreButton = document.createElement("button");
-            loadMoreButton.innerHTML = "Load More";
-            loadMoreButton.onclick = () => {
-                page++;
-                displayChannels();
-            };
-            gridContainer.appendChild(loadMoreButton);
+            loadMoreButton();
         } else {
-            loader.style.display = "none"; // Hide loader once everything is loaded
+            hideLoader();
         }
     }
 
-    // Play selected channel
+    // Load More Channels Button
+    function loadMoreButton() {
+        const loadMoreBtn = document.createElement("button");
+        loadMoreBtn.textContent = "Load More Channels";
+        loadMoreBtn.classList.add("load-more-btn");
+        loadMoreBtn.addEventListener("click", displayChannels);
+        gridContainer.appendChild(loadMoreBtn);
+    }
+
+    // Play Video
     function playVideo(channel) {
         const videoContainer = document.getElementById("video-container");
         const videoTitle = document.getElementById("video-title");
@@ -313,6 +323,12 @@
             alert("Error details copied!");
         });
     }
+
+    // Hide loader once data is fully loaded
+    function hideLoader() {
+        loader.style.display = "none";
+    }
+
 </script>
 
 </body>
