@@ -54,12 +54,6 @@
             z-index: 999;
         }
 
-        .progress-bar-filled {
-            height: 100%;
-            background-color: #4caf50;
-            width: 0;
-        }
-
         /* Header Styling */
         header {
             background-color: #333;
@@ -124,6 +118,39 @@
             border-radius: 10px;
         }
 
+        /* Error Message */
+        .error-message {
+            display: none;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .error-message button {
+            background-color: #721c24;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        .error-message button:hover {
+            background-color: #5a1c18;
+        }
+
+        .error-message pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .grid-container {
@@ -141,6 +168,14 @@
 
 <!-- Progress Bar -->
 <div class="progress-bar" id="progress-bar"></div>
+
+<!-- Error Message -->
+<div class="error-message" id="error-message">
+    <strong>Error loading channels!</strong>
+    <p>Please try again later. You can copy the error below:</p>
+    <pre id="error-details"></pre>
+    <button onclick="copyError()">Copy Error</button>
+</div>
 
 <header>
     Advanced IPTV Player
@@ -164,15 +199,22 @@
     const progressBar = document.getElementById("progress-bar");
     const loader = document.getElementById("loader");
     const gridContainer = document.getElementById("grid-container");
+    const errorMessage = document.getElementById("error-message");
+    const errorDetails = document.getElementById("error-details");
+    let page = 0;
+    const pageSize = 10;
+    let channels = [];
 
     // Fetch M3U8 data and parse it
     fetch(m3u8Url)
         .then(response => response.text())
         .then(data => {
-            const channels = parseM3U8Data(data);
-            displayChannels(channels);
+            channels = parseM3U8Data(data);
+            displayChannels();
         })
-        .catch(error => console.error("Error fetching M3U8 data:", error));
+        .catch(error => {
+            showError(error);
+        });
 
     // Parse M3U8 Data
     function parseM3U8Data(data) {
@@ -191,12 +233,14 @@
         return channels;
     }
 
-    // Display Channels in Grid
-    function displayChannels(channels) {
-        let loadedCount = 0;
+    // Display Channels in Grid with Pagination
+    function displayChannels() {
         const total = channels.length;
-
-        channels.forEach((channel, index) => {
+        const startIndex = page * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const channel = channels[i];
             const gridItem = document.createElement("div");
             gridItem.classList.add("grid-item");
 
@@ -208,41 +252,66 @@
 
             gridItem.appendChild(img);
             gridContainer.appendChild(gridItem);
+        }
 
-            // Update Progress Bar as Logos Load
-            img.onload = () => {
-                loadedCount++;
-                const progress = (loadedCount / total) * 100;
-                progressBar.style.width = progress + "%";
-                if (loadedCount === total) {
-                    setTimeout(() => {
-                        progressBar.style.width = "100%";
-                        loader.style.display = "none";
-                    }, 1000);
-                }
+        // Update progress bar
+        progressBar.style.width = ((endIndex / total) * 100) + "%";
+
+        // Show Load More button if there are more channels
+        if (endIndex < total) {
+            const loadMoreButton = document.createElement("button");
+            loadMoreButton.innerHTML = "Load More";
+            loadMoreButton.onclick = () => {
+                page++;
+                displayChannels();
             };
-        });
+            gridContainer.appendChild(loadMoreButton);
+        } else {
+            loader.style.display = "none"; // Hide loader once everything is loaded
+        }
     }
 
-    // Play Video in Player
+    // Play selected channel
     function playVideo(channel) {
-        document.getElementById("video-title").textContent = channel.title;
-        const videoPlayer = document.getElementById("video-player");
+        const videoContainer = document.getElementById("video-container");
+        const videoTitle = document.getElementById("video-title");
         const videoSource = document.getElementById("video-source");
 
+        videoTitle.innerHTML = channel.title;
+        videoSource.src = channel.stream;
+
+        // Show video player
+        videoContainer.style.display = "block";
+        const videoPlayer = document.getElementById("video-player");
+
         if (Hls.isSupported()) {
-            const hls = new Hls();
+            var hls = new Hls();
             hls.loadSource(channel.stream);
             hls.attachMedia(videoPlayer);
-            videoPlayer.style.display = "block";
-            document.getElementById("video-container").style.display = "block";
-
-            // Hide the channel grid and loader
-            gridContainer.style.display = "none";
-            progressBar.style.display = "none";
-        } else {
-            alert("HLS.js is not supported on this browser.");
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                videoPlayer.play();
+            });
+        } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
+            videoPlayer.src = channel.stream;
+            videoPlayer.addEventListener("loadedmetadata", function () {
+                videoPlayer.play();
+            });
         }
+    }
+
+    // Show Error Message
+    function showError(error) {
+        loader.style.display = "none";
+        errorMessage.style.display = "block";
+        errorDetails.textContent = error.message || "An error occurred.";
+    }
+
+    // Copy error to clipboard
+    function copyError() {
+        const text = errorDetails.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Error details copied!");
+        });
     }
 </script>
 
