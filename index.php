@@ -1,13 +1,14 @@
 <?php
-// Proxy function for handling cross-origin media requests
+// Proxy logic for handling advanced streaming and headers
 function proxyRequest($url)
 {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 
     $data = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -25,17 +26,17 @@ function proxyRequest($url)
     exit;
 }
 
-// If the proxy is triggered
+// If proxy is requested
 if (isset($_GET['proxy']) && isset($_GET['url'])) {
     proxyRequest(urldecode($_GET['url']));
 }
 
-// Load the M3U playlist file
+// Load M3U file
 $m3uUrl = "https://raw.githubusercontent.com/iptv2024/Vod/72e4af1b320ba276d13c5a295c05944c0d14bd32/13.m3u";
 $m3uData = file_get_contents($m3uUrl);
 
 if (!$m3uData) {
-    die("Failed to load M3U data.");
+    die("Failed to load M3U data");
 }
 
 // Parse M3U content
@@ -59,6 +60,12 @@ $totalItems = count($channels);
 $totalPages = ceil($totalItems / $pageSize);
 $startIndex = ($page - 1) * $pageSize;
 $paginatedChannels = array_slice($channels, $startIndex, $pageSize);
+
+// Pagination limits
+$visiblePages = 10;
+$startPage = max(1, $page - floor($visiblePages / 2));
+$endPage = min($totalPages, $startPage + $visiblePages - 1);
+$startPage = max(1, $endPage - $visiblePages + 1);
 ?>
 
 <!DOCTYPE html>
@@ -67,21 +74,22 @@ $paginatedChannels = array_slice($channels, $startIndex, $pageSize);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Advanced IPTV Player with universal streaming support">
-    <meta name="keywords" content="IPTV, Streaming, HLS, Video Player">
+    <meta name="description" content="Advanced IPTV Player with modern UI and multi-format streaming">
+    <meta name="keywords" content="IPTV, HLS, Streaming, Adaptive Bitrate, Video Player">
     <meta name="author" content="Rekt Developers">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video-js.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-hls@5.15.0/videojs-contrib-hls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.15.0/videojs-contrib-hls.min.js"></script>
     <title>Advanced IPTV Player</title>
 </head>
 
 <body class="bg-gray-900 text-white">
 
     <!-- Header -->
-    <header class="bg-gray-800 py-6 text-center shadow-md">
+    <header class="bg-gray-800 py-6 text-center shadow-lg">
         <h1 class="text-4xl font-bold text-green-400">Advanced IPTV Player</h1>
     </header>
 
@@ -111,7 +119,7 @@ $paginatedChannels = array_slice($channels, $startIndex, $pageSize);
                 </a>
             <?php endif; ?>
 
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+            <?php for ($i = $startPage; $i <= $endPage; $i++): ?>
                 <a href="?page=<?= $i ?>" class="btn <?= $i === $page ? 'bg-green-500' : 'bg-gray-700 hover:bg-gray-600' ?> text-white px-4 py-2 rounded">
                     <?= $i ?>
                 </a>
@@ -126,37 +134,47 @@ $paginatedChannels = array_slice($channels, $startIndex, $pageSize);
     </div>
 
     <!-- Video Modal -->
-    <div id="video-modal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-70 flex justify-center items-center">
-        <div class="bg-gray-800 rounded-lg shadow-lg p-6 max-w-lg w-full">
-            <h2 id="video-title" class="text-xl font-bold text-white mb-4"></h2>
-            <video id="video-player" class="video-js vjs-default-skin w-full h-64" controls autoplay preload="auto"></video>
-            <button onclick="closeVideo()" class="btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 mt-4 w-full">
-                Close
-            </button>
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" id="overlay"></div>
+    <div class="fixed inset-0 z-50 hidden justify-center items-center" id="video-modal">
+        <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden max-w-lg mx-auto">
+            <div class="p-4">
+                <h2 class="text-xl font-bold mb-4" id="video-title"></h2>
+                <video id="video-player" class="video-js vjs-default-skin w-full h-60" controls autoplay preload="auto">
+                    <source src="" type="application/x-mpegURL">
+                </video>
+                <button onclick="closeVideo()" class="btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 mt-4 w-full">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         function playVideo(title, url) {
-            const videoTitle = document.getElementById('video-title');
+            const videoModal = document.getElementById('video-modal');
+            const overlay = document.getElementById('overlay');
             const videoPlayer = document.getElementById('video-player');
-            const modal = document.getElementById('video-modal');
+            const videoTitle = document.getElementById('video-title');
 
-            videoTitle.textContent = title;
+            videoTitle.innerText = title;
+
             const player = videojs(videoPlayer);
             player.src({ src: `?proxy=1&url=${url}`, type: "application/x-mpegURL" });
 
-            modal.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            videoModal.classList.remove('hidden');
         }
 
         function closeVideo() {
-            const modal = document.getElementById('video-modal');
+            const videoModal = document.getElementById('video-modal');
+            const overlay = document.getElementById('overlay');
             const videoPlayer = document.getElementById('video-player');
 
             const player = videojs(videoPlayer);
             player.dispose();
 
-            modal.classList.add('hidden');
+            overlay.classList.add('hidden');
+            videoModal.classList.add('hidden');
         }
     </script>
 </body>
