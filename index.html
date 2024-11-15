@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Advanced IPTV Player for watching live TV channels with dynamic, paginated UI.">
+    <meta name="description" content="Advanced IPTV Player with Debugger, error handling, and request logs.">
     <meta property="og:title" content="Advanced IPTV Player">
-    <meta property="og:description" content="Watch live IPTV channels with a dynamic player, loading content efficiently in a user-friendly interface.">
+    <meta property="og:description" content="Watch live IPTV channels with dynamic loading and debugging features.">
     <meta property="og:image" content="https://example.com/path/to/preview-image.jpg">
     <meta property="og:url" content="https://example.com/your-page">
     <meta property="og:site_name" content="Advanced IPTV Player">
@@ -13,7 +14,7 @@
     <!-- Twitter Metadata -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:title" content="Advanced IPTV Player">
-    <meta property="twitter:description" content="Watch live IPTV channels with a dynamic player, loading content efficiently in a user-friendly interface.">
+    <meta property="twitter:description" content="Watch live IPTV channels with dynamic loading and debugging features.">
     <meta property="twitter:image" content="https://example.com/path/to/preview-image.jpg">
 
     <title>Advanced IPTV Player</title>
@@ -55,6 +56,7 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Progress Bar */
         .progress-bar {
             position: fixed;
             top: 0;
@@ -66,6 +68,7 @@
             z-index: 999;
         }
 
+        /* Header */
         header {
             background-color: #333;
             color: #fff;
@@ -77,6 +80,7 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
+        /* Channel Grid */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -110,6 +114,7 @@
             transform: scale(1.1);
         }
 
+        /* Video Player */
         .video-container {
             display: none;
             width: 80%;
@@ -127,6 +132,7 @@
             border-radius: 10px;
         }
 
+        /* Error Message */
         .error-message {
             display: none;
             background-color: #f8d7da;
@@ -159,6 +165,55 @@
             word-wrap: break-word;
         }
 
+        /* Debugger Panel */
+        .debugger-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            display: none;
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .debugger-panel pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .debugger-panel button {
+            background-color: #e74c3c;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .debugger-panel button:hover {
+            background-color: #c0392b;
+        }
+
+        /* Load More Button */
+        .load-more-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .load-more-btn:hover {
+            background-color: #45a049;
+        }
+
         @media (max-width: 768px) {
             .grid-container {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -166,173 +221,160 @@
         }
     </style>
 </head>
+
 <body>
 
-<!-- Loader -->
-<div class="loader" id="loader">
-    <div></div>
-</div>
+    <!-- Loader -->
+    <div class="loader" id="loader">
+        <div></div>
+    </div>
 
-<!-- Progress Bar -->
-<div class="progress-bar" id="progress-bar"></div>
+    <!-- Progress Bar -->
+    <div class="progress-bar" id="progress-bar"></div>
 
-<!-- Error Message -->
-<div class="error-message" id="error-message">
-    <strong>Error loading channels!</strong>
-    <p>Please try again later. You can copy the error below:</p>
-    <pre id="error-details"></pre>
-    <button onclick="copyError()">Copy Error</button>
-</div>
+    <!-- Error Message -->
+    <div class="error-message" id="error-message">
+        <strong>Error loading channels!</strong>
+        <p>Please try again later. You can copy the error below:</p>
+        <pre id="error-details"></pre>
+        <button onclick="copyError()">Copy Error</button>
+    </div>
 
-<header>
-    Advanced IPTV Player
-</header>
+    <!-- Debugger Panel -->
+    <div class="debugger-panel" id="debugger-panel">
+        <button onclick="closeDebugger()">Close Debugger</button>
+        <h2>Network Requests & Responses</h2>
+        <pre id="debug-info"></pre>
+    </div>
 
-<!-- Channel Grid -->
-<div class="grid-container" id="grid-container"></div>
+    <header>
+        Advanced IPTV Player
+    </header>
 
-<!-- Video Player -->
-<div class="video-container" id="video-container">
-    <h2 id="video-title"></h2>
-    <video id="video-player" controls>
-        <source id="video-source" type="application/x-mpegURL">
-    </video>
-</div>
+    <!-- Channel Grid -->
+    <div class="grid-container" id="grid-container"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Video Player -->
+    <div class="video-container" id="video-container">
+        <h2 id="video-title"></h2>
+        <video id="video-player" controls>
+            <source id="video-source" type="application/x-mpegURL">
+        </video>
+    </div>
 
-<script>
-    const m3u8Url = "https://raw.githubusercontent.com/iptv2024/Vod/72e4af1b320ba276d13c5a295c05944c0d14bd32/13.m3u";
-    const progressBar = document.getElementById("progress-bar");
-    const loader = document.getElementById("loader");
-    const gridContainer = document.getElementById("grid-container");
-    const errorMessage = document.getElementById("error-message");
-    const errorDetails = document.getElementById("error-details");
-    let page = 0;
-    const pageSize = 10;
-    let channels = [];
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-    // Fetch M3U8 data and parse it
-    fetch(m3u8Url)
-        .then(response => response.text())
-        .then(data => {
-            channels = parseM3U8Data(data);
-            displayChannels();
-        })
-        .catch(error => {
-            showError(error);
-        });
+    <script>
+        const m3u8Url = "https://raw.githubusercontent.com/iptv2024/Vod/72e4af1b320ba276d13c5a295c05944c0d14bd32/13.m3u";
+        const progressBar = document.getElementById("progress-bar");
+        const loader = document.getElementById("loader");
+        const gridContainer = document.getElementById("grid-container");
+        const errorMessage = document.getElementById("error-message");
+        const errorDetails = document.getElementById("error-details");
+        const debuggerPanel = document.getElementById("debugger-panel");
+        const debugInfo = document.getElementById("debug-info");
+        let page = 0;
+        const pageSize = 10;
+        let channels = [];
 
-    // Parse M3U8 Data
-    function parseM3U8Data(data) {
-        const lines = data.split("\n");
-        const channels = [];
-        lines.forEach(line => {
-            const match = line.match(/#EXTINF:-1 group-title="(.+?)" tvg-logo="(.+?)",(.+)\n(.+)/);
-            if (match) {
-                channels.push({
-                    title: match[3],
-                    logo: match[2],
-                    stream: match[4]
-                });
+        // Function to open the debugger panel
+        function openDebugger() {
+            debuggerPanel.style.display = 'block';
+        }
+
+        // Function to close the debugger panel
+        function closeDebugger() {
+            debuggerPanel.style.display = 'none';
+        }
+
+        // Fetch M3U8 data and parse it
+        fetch(m3u8Url)
+            .then(response => {
+                logDebug('Request URL:', m3u8Url);
+                logDebug('Response Status:', response.status);
+                return response.text();
+            })
+            .then(data => {
+                channels = parseM3U8Data(data);
+                displayChannels();
+                hideLoader();
+            })
+            .catch(error => {
+                showError(error);
+                hideLoader();
+            });
+
+        // Parse M3U8 Data
+        function parseM3U8Data(data) {
+            const lines = data.split("\n");
+            const channels = [];
+            lines.forEach(line => {
+                const match = line.match(/#EXTINF:-1 group-title="(.+?)" tvg-logo="(.+?)",(.+)\n(.+)/);
+                if (match) {
+                    channels.push({ title: match[3], logo: match[2], url: match[4] });
+                }
+            });
+            return channels;
+        }
+
+        // Display channels on the grid
+        function displayChannels() {
+            gridContainer.innerHTML = '';
+            for (let i = page * pageSize; i < Math.min((page + 1) * pageSize, channels.length); i++) {
+                const channel = channels[i];
+                const channelElement = document.createElement('div');
+                channelElement.classList.add('grid-item');
+                channelElement.innerHTML = `
+                    <img src="${channel.logo}" alt="${channel.title}">
+                    <div class="title">${channel.title}</div>
+                `;
+                channelElement.onclick = () => playVideo(channel);
+                gridContainer.appendChild(channelElement);
             }
-        });
-        return channels;
-    }
-
-    // Display Channels in Grid with Pagination
-    function displayChannels() {
-        const total = channels.length;
-        const startIndex = page * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, total);
-        
-        for (let i = startIndex; i < endIndex; i++) {
-            const channel = channels[i];
-            const gridItem = document.createElement("div");
-            gridItem.classList.add("grid-item");
-
-            const img = document.createElement("img");
-            img.src = channel.logo;
-            img.alt = channel.title;
-            img.title = channel.title;
-            img.addEventListener("click", () => playVideo(channel));
-
-            gridItem.appendChild(img);
-            gridContainer.appendChild(gridItem);
         }
 
-        updateProgressBar(total, endIndex);
-        page++;
+        // Play video
+        function playVideo(channel) {
+            const videoPlayer = document.getElementById('video-player');
+            const videoContainer = document.getElementById('video-container');
+            const videoTitle = document.getElementById('video-title');
+            const videoSource = document.getElementById('video-source');
 
-        if (endIndex < total) {
-            loadMoreButton();
-        } else {
-            hideLoader();
+            videoTitle.textContent = channel.title;
+            videoSource.src = channel.url;
+
+            videoContainer.style.display = 'block';
+            videoPlayer.load();
+            videoPlayer.play();
         }
-    }
 
-    // Update Progress Bar
-    function updateProgressBar(total, loaded) {
-        progressBar.style.width = (loaded / total) * 100 + "%";
-    }
+        // Show error message
+        function showError(error) {
+            errorMessage.style.display = 'block';
+            errorDetails.textContent = error.message || 'An unknown error occurred.';
+        }
 
-    // Load More Button
-    function loadMoreButton() {
-        const loadMoreBtn = document.createElement("button");
-        loadMoreBtn.textContent = "Load More Channels";
-        loadMoreBtn.classList.add("load-more-btn");
-        loadMoreBtn.addEventListener("click", displayChannels);
-        gridContainer.appendChild(loadMoreBtn);
-    }
+        // Hide loader
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
 
-    // Play Video
-    function playVideo(channel) {
-        const videoContainer = document.getElementById("video-container");
-        const videoTitle = document.getElementById("video-title");
-        const videoSource = document.getElementById("video-source");
-
-        videoTitle.innerHTML = channel.title;
-        videoSource.src = channel.stream;
-
-        // Show video player
-        videoContainer.style.display = "block";
-        const videoPlayer = document.getElementById("video-player");
-
-        if (Hls.isSupported()) {
-            var hls = new Hls();
-            hls.loadSource(channel.stream);
-            hls.attachMedia(videoPlayer);
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                videoPlayer.play();
-            });
-        } else if (videoPlayer.canPlayType("application/vnd.apple.mpegurl")) {
-            videoPlayer.src = channel.stream;
-            videoPlayer.addEventListener("loadedmetadata", function () {
-                videoPlayer.play();
+        // Copy error details
+        function copyError() {
+            navigator.clipboard.writeText(errorDetails.textContent).then(() => {
+                alert('Error details copied to clipboard.');
             });
         }
-    }
 
-    // Show Error Message
-    function showError(error) {
-        loader.style.display = "none";
-        errorMessage.style.display = "block";
-        errorDetails.textContent = error.message || "An error occurred.";
-    }
+        // Log debug information
+        function logDebug(title, info) {
+            const log = `${title}: ${info}`;
+            debugInfo.textContent += log + '\n';
+        }
 
-    // Copy error to clipboard
-    function copyError() {
-        const text = errorDetails.textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            alert("Error details copied!");
-        });
-    }
-
-    // Hide loader once data is fully loaded
-    function hideLoader() {
-        loader.style.display = "none";
-    }
-</script>
+        // Show the debugger panel (for debugging)
+        setTimeout(() => openDebugger(), 5000); // Open debugger after 5 seconds (can be removed)
+    </script>
 
 </body>
 </html>
